@@ -311,9 +311,9 @@ function createColorModal() {
         row._input = input; row._val = val;
         return row;
     }
-    sliderWidth = makeSlider('Grosor', 1, 25, 0.5, 3, function(v){ TOOL_SETTINGS[currentTool].width=v; });
-    sliderOpacity = makeSlider('Opacidad', 0.1, 1.0, 0.05, 1.0, function(v){ TOOL_SETTINGS[currentTool].opacity=v; });
-    sliderFill = makeSlider('Relleno', 0.05, 0.5, 0.05, 0.15, function(v){ TOOL_SETTINGS[currentTool].fillOpacity=v; });
+    sliderWidth = makeSlider('Width', 1, 25, 0.5, 3, function(v){ TOOL_SETTINGS[currentTool].width=v; });
+    sliderOpacity = makeSlider('Opacity', 0.1, 1.0, 0.05, 1.0, function(v){ TOOL_SETTINGS[currentTool].opacity=v; });
+    sliderFill = makeSlider('Fill', 0.05, 0.5, 0.05, 0.15, function(v){ TOOL_SETTINGS[currentTool].fillOpacity=v; });
     cDiv.appendChild(sliderWidth); cDiv.appendChild(sliderOpacity); cDiv.appendChild(sliderFill);
     colorModal.appendChild(cDiv);
     document.body.appendChild(colorModal);
@@ -392,7 +392,7 @@ function setupMouseHandlers() {
         isDrawing = false;
         if (currentTool === 'laser') return;
         if (currentTool === 'callout') {
-            var text = prompt('Texto de la anotación:');
+            var text = prompt('Annotation text:');
             if (text && text.trim()) {
                 var bx = e.clientX/canvas.width, by = e.clientY/canvas.height;
                 var dx = (bx-startX)*canvas.width, dy = (by-startY)*canvas.height;
@@ -458,8 +458,8 @@ function loadScript(url) {
 async function exportPDF() {
     var cdnH = opts.cdnHtml2canvas || 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
     var cdnJ = opts.cdnJspdf || 'https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js';
-    if (typeof html2canvas === 'undefined') { badge.textContent='LOADING...'; badge.style.display='block'; badge.style.background='#1da1f2'; try { await loadScript(cdnH); } catch(e) { alert('Error cargando html2canvas'); return; } }
-    if (typeof window.jspdf === 'undefined') { try { await loadScript(cdnJ); } catch(e) { alert('Error cargando jsPDF'); return; } }
+    if (typeof html2canvas === 'undefined') { badge.textContent='LOADING...'; badge.style.display='block'; badge.style.background='#1da1f2'; try { await loadScript(cdnH); } catch(e) { alert('Error loading html2canvas'); return; } }
+    if (typeof window.jspdf === 'undefined') { try { await loadScript(cdnJ); } catch(e) { alert('Error loading jsPDF'); return; } }
 
     badge.textContent='EXPORTING...'; badge.style.display='block'; badge.style.background='#1da1f2';
     var slidesSel = opts.slides || '.slide';
@@ -529,7 +529,7 @@ async function exportPDF() {
         }
         canvas.style.display=''; setSlideIndex(originalSlide);
         pdf.save(opts.pdfFilename || 'presentation.pdf');
-    } catch(err) { canvas.style.display=''; alert('Error exportando PDF: '+err.message); setSlideIndex(originalSlide); }
+    } catch(err) { canvas.style.display=''; alert('Error exporting PDF: '+err.message); setSlideIndex(originalSlide); }
     if (wasDrawMode) setDrawMode(true);
     badge.style.display='none'; badge.style.background='#ff4444';
 }
