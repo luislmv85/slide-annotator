@@ -344,6 +344,65 @@ function toggleColorPalette() {
     }
 }
 
+// --- Text input modal ---
+var textModal = null;
+var textInput = null;
+var textResolve = null;
+
+function createTextModal() {
+    textModal = document.createElement('div');
+    textModal.style.cssText = 'display:none;position:fixed;z-index:10003;background:#1a2733;border:1px solid #3a4a5a;border-radius:10px;padding:12px;box-shadow:0 8px 32px rgba(0,0,0,0.6);';
+    var label = document.createElement('div');
+    label.style.cssText = 'font-size:10px;color:#8899a6;margin-bottom:6px;font-family:monospace;letter-spacing:0.5px;';
+    label.textContent = 'ANNOTATION';
+    textModal.appendChild(label);
+    textInput = document.createElement('textarea');
+    textInput.style.cssText = 'width:280px;height:100px;background:#0f1419;border:1px solid #3a4a5a;border-radius:6px;color:#e7e9ea;font-size:14px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;padding:10px;resize:none;outline:none;box-sizing:border-box;';
+    textInput.placeholder = 'Type here...';
+    textInput.addEventListener('focus', function() { textInput.style.borderColor='#3298dc'; });
+    textInput.addEventListener('blur', function() { textInput.style.borderColor='#3a4a5a'; });
+    textInput.addEventListener('keydown', function(e) {
+        e.stopPropagation();
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); confirmTextInput(); }
+        if (e.key === 'Escape') { e.preventDefault(); cancelTextInput(); }
+    });
+    textModal.appendChild(textInput);
+    var hint = document.createElement('div');
+    hint.style.cssText = 'font-size:9px;color:#556;margin-top:6px;font-family:monospace;';
+    hint.textContent = 'Enter = confirm \u00b7 Esc = cancel \u00b7 Shift+Enter = newline';
+    textModal.appendChild(hint);
+    document.body.appendChild(textModal);
+}
+
+function confirmTextInput() {
+    var val = textInput.value.trim();
+    textModal.style.display = 'none';
+    textInput.value = '';
+    if (textResolve) { textResolve(val || null); textResolve = null; }
+}
+
+function cancelTextInput() {
+    textModal.style.display = 'none';
+    textInput.value = '';
+    if (textResolve) { textResolve(null); textResolve = null; }
+}
+
+function showTextInput(px, py) {
+    return new Promise(function(resolve) {
+        textResolve = resolve;
+        textModal.style.display = 'block';
+        var mW = textModal.offsetWidth, mH = textModal.offsetHeight;
+        var vW = window.innerWidth, vH = window.innerHeight;
+        var margin = 0.05;
+        var left = Math.max(vW*margin, Math.min(vW*(1-margin)-mW, px - mW/2));
+        var top = Math.max(vH*margin, Math.min(vH*(1-margin)-mH, py - mH/2));
+        textModal.style.left = left + 'px';
+        textModal.style.top = top + 'px';
+        textInput.value = '';
+        setTimeout(function() { textInput.focus(); }, 50);
+    });
+}
+
 
 // --- Mouse handlers ---
 function setupMouseHandlers() {
@@ -392,14 +451,16 @@ function setupMouseHandlers() {
         isDrawing = false;
         if (currentTool === 'laser') return;
         if (currentTool === 'callout') {
-            var text = prompt('Annotation text:');
-            if (text && text.trim()) {
-                var bx = e.clientX/canvas.width, by = e.clientY/canvas.height;
-                var dx = (bx-startX)*canvas.width, dy = (by-startY)*canvas.height;
-                var hasArrow = Math.sqrt(dx*dx + dy*dy) > 30;
-                getStrokes().push({ tool:'callout', targetX:startX, targetY:startY, boxX:bx, boxY:by, text:text.trim(), color:DRAW_COLOR, lineWidth:getToolWidth(), hasArrow:hasArrow, opacity:getToolOpacity() });
-            }
-            currentStroke = null; redrawCanvas(); saveToStorage(); return;
+            var bx = e.clientX/canvas.width, by = e.clientY/canvas.height;
+            var dx = (bx-startX)*canvas.width, dy = (by-startY)*canvas.height;
+            var hasArrow = Math.sqrt(dx*dx + dy*dy) > 30;
+            showTextInput(e.clientX, e.clientY).then(function(text) {
+                if (text) {
+                    getStrokes().push({ tool:'callout', targetX:startX, targetY:startY, boxX:bx, boxY:by, text:text, color:DRAW_COLOR, lineWidth:getToolWidth(), hasArrow:hasArrow, opacity:getToolOpacity() });
+                }
+                currentStroke = null; redrawCanvas(); saveToStorage();
+            });
+            return;
         }
         if (currentTool !== 'pen' && currentTool !== 'highlighter') {
             currentStroke.x2 = e.clientX/canvas.width; currentStroke.y2 = e.clientY/canvas.height;
@@ -431,7 +492,7 @@ function setupKeyboardHandlers() {
         if (key === 'f' && !drawMode) { e.preventDefault(); openPresentationPopup(); return; }
         if (key === 'h') { e.preventDefault(); if (drawMode) setDrawMode(false); toggleCanvasVisibility(); return; }
         if (key === 'd') { e.preventDefault(); setDrawMode(!drawMode); return; }
-        if (key === 'escape' && drawMode) { e.preventDefault(); colorModal.style.display='none'; setDrawMode(false); return; }
+        if (key === 'escape' && drawMode) { e.preventDefault(); if (textModal && textModal.style.display !== 'none') { cancelTextInput(); return; } colorModal.style.display='none'; setDrawMode(false); return; }
         if (drawMode) {
             if (key === 'c') { e.preventDefault(); toggleColorPalette(); return; }
             if (key === 'p') { stopLaser(); currentTool='pen'; updateBadge(); return; }
@@ -562,6 +623,7 @@ function init(userOpts) {
     document.body.appendChild(badge);
 
     createColorModal();
+    createTextModal();
     setupMouseHandlers();
     setupKeyboardHandlers();
     window.addEventListener('resize', resizeCanvas);
